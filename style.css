@@ -1,0 +1,39 @@
+header {
+  padding: 1.5rem 2rem;
+  background: #18181f;
+  border-bottom: 1px solid #2a2a35;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+header h1 { font-size: 1.6rem; }
+
+header nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#content-area {
+  flex: 1;
+  padding: 2rem;
+  min-height: 400px;
+}
+
+#category-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+#current-category { font-size: 1.5rem; }
+#items-count { font-size: 0.8rem; color: #666; }
+
+#items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}

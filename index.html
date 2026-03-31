@@ -1,15 +1,90 @@
-<section id="watchlist">
-  <h2>Watchlist</h2>
-  <ul>
-    <li>Watching</li>
-    <li>Planned</li>
-    <li>Rewatching</li>
-    <li>Paused</li>
-    <li>Dropped</li>
-    <li>Favorites</li>
-  </ul>
-</section>
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie & Series Tracker</title>
+</head>
+<body>
+  <header>
+    <h1>Movie & Series Tracker</h1>
+    <nav>
+      <button id="add-item-btn">+ Adaugă Film/Serial</button>
+      <input type="search" id="search-bar" placeholder="Caută în watchlist...">
+    </nav>
+  </header>
 
-<footer>
-  <p>Realizat de trofaila alexandru &amp; borcea bogdan — Clasa a 11-a</p>
-</footer>
+  <main>
+    <aside id="categories-sidebar">
+      <h2>Categorii</h2>
+      <ul>
+        <li><button class="category-btn active" data-category="watching">Watching</button></li>
+        <li><button class="category-btn" data-category="planned">Planned</button></li>
+        <li><button class="category-btn" data-category="rewatching">Rewatching</button></li>
+        <li><button class="category-btn" data-category="paused">Paused</button></li>
+        <li><button class="category-btn" data-category="dropped">Dropped</button></li>
+        <li><button class="category-btn" data-category="favorites">Favorites</button></li>
+      </ul>
+    </aside>
+
+    <section id="content-area">
+      <div id="category-header">
+        <h2 id="current-category">Watching</h2>
+        <span id="items-count">0 items</span>
+      </div>
+
+      <div id="items-grid">
+        
+      </div>
+    </section>
+  </main>
+
+  <dialog id="add-edit-modal">
+    <form id="item-form">
+      <h3 id="modal-title">Adaugă Film/Serial</h3>
+      
+      <label for="title">Titlu:</label>
+      <input type="text" id="title" name="title" required>
+      
+      <label for="type">Tip:</label>
+      <select id="type" name="type" required>
+        <option value="movie">Film</option>
+        <option value="series">Serial</option>
+      </select>
+      
+      <label for="category">Categorie:</label>
+      <select id="category" name="category" required>
+        <option value="watching">Watching</option>
+        <option value="planned">Planned</option>
+        <option value="rewatching">Rewatching</option>
+        <option value="paused">Paused</option>
+        <option value="dropped">Dropped</option>
+        <option value="favorites">Favorites</option>
+      </select>
+      
+      <label for="progress">Progress (episod curent/total):</label>
+      <input type="text" id="progress" name="progress" placeholder="ex: 5/10">
+      
+      <label for="rating">Rating (1-10):</label>
+      <input type="number" id="rating" name="rating" min="1" max="10">
+      
+      <label for="image-url">URL Imagine:</label>
+      <input type="url" id="image-url" name="image-url" placeholder="https://...">
+      
+      <label for="notes">Notițe:</label>
+      <textarea id="notes" name="notes" rows="3"></textarea>
+      
+      <div class="modal-actions">
+        <button type="submit">Salvează</button>
+        <button type="button" id="cancel-btn">Anulează</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer>
+    <p>Realizat de Trofaila Alexandru &amp; Borcea Bogdan — Clasa a 11-a</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

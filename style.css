@@ -190,7 +190,6 @@ dialog::backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(3px); }
 #cancel-btn:hover { border-color: var(--danger); color: var(--danger); }
 
 footer { padding: 0.85rem 2rem; border-top: 1px solid var(--border); font-size: 0.72rem; color: var(--muted); text-align: center; background: var(--surface); }
-
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

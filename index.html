@@ -3,89 +3,243 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Movie & Series Tracker</title>
+  <title>Movie Playlist Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark.css">
+  <script src="app.js" defer></script>
 </head>
 <body>
-  <header>
-    <h1>Movie & Series Tracker</h1>
-    <nav>
-      <button id="add-item-btn">+ Adaugă Film/Serial</button>
-      <input type="search" id="search-bar" placeholder="Caută în watchlist...">
+  <header class="site-header" role="banner">
+    <div class="site-header__brand">
+      <a href="#" class="site-logo" aria-hidden="true">
+        <svg class="site-logo__icon" viewBox="0 0 24 24" width="40" height="40" aria-hidden="true" focusable="false">
+          <circle cx="7" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="17" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="7" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="17" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="4" y="6" width="16" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="10" y1="6" x2="10" y2="18" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="14" y1="6" x2="14" y2="18" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+      </a>
+      <h1 class="site-title">Movie Playlist Tracker</h1>
+    </div>
+    <nav class="site-header__nav" aria-label="Acțiuni principale">
+      <button type="button" id="add-item-btn" class="btn-add">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+        <span>Adaugă</span>
+      </button>
+      <label class="search-field">
+        <span class="visually-hidden">Caută în watchlist</span>
+        <svg class="search-field__icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+        <input type="search" id="search-bar" name="search" placeholder="Caută în watchlist..." autocomplete="off" minlength="1">
+      </label>
+      <button type="button" id="theme-toggle-btn" class="theme-toggle" aria-pressed="false" aria-label="Comută tema lumină sau întunecată">
+        <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" focusable="false">
+            <path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 1 0-1.41-1.41l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM1 13c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1zm20 0c0 .55.45 1 1 1s1-.45 1-1-.45-1-1-1-1 .45-1 1zm-9-8c.55 0 1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zm0 18c.55 0 1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zm-5.99-2.41a.996.996 0 1 0-1.41-1.41l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM19.07 4.99a.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41z"/>
+          </svg>
+        </span>
+        <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" focusable="false">
+            <path fill="currentColor" d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-1.56.89-3.36 1.39-5.29 1.39-5.79 0-10.5-4.71-10.5-10.5 0-1.93.5-3.73 1.39-5.29z"/>
+          </svg>
+        </span>
+      </button>
     </nav>
   </header>
 
-  <main>
-    <aside id="categories-sidebar">
-      <h2>Categorii</h2>
-      <ul>
-        <li><button class="category-btn active" data-category="watching">Watching</button></li>
-        <li><button class="category-btn" data-category="planned">Planned</button></li>
-        <li><button class="category-btn" data-category="rewatching">Rewatching</button></li>
-        <li><button class="category-btn" data-category="paused">Paused</button></li>
-        <li><button class="category-btn" data-category="dropped">Dropped</button></li>
-        <li><button class="category-btn" data-category="favorites">Favorites</button></li>
+  <div class="layout">
+    <aside class="sidebar" id="categories-sidebar" aria-label="Categorii">
+      <h2 class="sidebar__heading">Categorii</h2>
+      <ul class="sidebar__list" role="list">
+        <li>
+          <button type="button" class="category-btn active" data-category="watching">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M8 5v14l11-7z"/>
+            </svg>
+            <span class="category-btn__label">Urmăresc</span>
+            <span class="category-btn__count" data-count-for="watching">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="category-btn" data-category="planned">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+            </svg>
+            <span class="category-btn__label">Planificat</span>
+            <span class="category-btn__count" data-count-for="planned">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="category-btn" data-category="rewatching">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+            </svg>
+            <span class="category-btn__label">Re-vizionare</span>
+            <span class="category-btn__count" data-count-for="rewatching">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="category-btn" data-category="paused">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+            <span class="category-btn__label">Întrerupt</span>
+            <span class="category-btn__count" data-count-for="paused">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="category-btn" data-category="dropped">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+            <span class="category-btn__label">Abandonat</span>
+            <span class="category-btn__count" data-count-for="dropped">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="category-btn" data-category="favorites">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+            <span class="category-btn__label">Favorite</span>
+            <span class="category-btn__count" data-count-for="favorites">0</span>
+          </button>
+        </li>
       </ul>
     </aside>
 
-    <section id="content-area">
-      <div id="category-header">
-        <h2 id="current-category">Watching</h2>
-        <span id="items-count">0 items</span>
+    <main class="main" id="content-area">
+      <header class="main__header" id="category-header">
+        <h2 class="main__title" id="current-category">Urmăresc</h2>
+        <span class="main__badge" id="items-count" aria-live="polite">0 elemente</span>
+      </header>
+      <div id="items-grid" class="items-grid" role="list" aria-label="Lista de filme și seriale"></div>
+    </main>
+  </div>
+
+  <dialog id="item-dialog" class="item-dialog">
+    <form id="item-form" action="#" autocomplete="off">
+      <h3 id="modal-title" class="item-dialog__title">Adaugă film sau serial</h3>
+
+      <div class="form-field">
+        <label for="title">Titlu</label>
+        <input type="text" id="title" name="title" required minlength="1" maxlength="500" autocomplete="off">
       </div>
 
-      <div id="items-grid">
-        
+      <div class="form-field">
+        <label for="type">Tip</label>
+        <select id="type" name="type" required>
+          <option value="">Selectează tipul</option>
+          <option value="movie">Film</option>
+          <option value="series">Serial</option>
+        </select>
       </div>
-    </section>
-  </main>
 
-  <dialog id="add-edit-modal">
-    <form id="item-form">
-      <h3 id="modal-title">Adaugă Film/Serial</h3>
-      
-      <label for="title">Titlu:</label>
-      <input type="text" id="title" name="title" required>
-      
-      <label for="type">Tip:</label>
-      <select id="type" name="type" required>
-        <option value="movie">Film</option>
-        <option value="series">Serial</option>
-      </select>
-      
-      <label for="category">Categorie:</label>
-      <select id="category" name="category" required>
-        <option value="watching">Watching</option>
-        <option value="planned">Planned</option>
-        <option value="rewatching">Rewatching</option>
-        <option value="paused">Paused</option>
-        <option value="dropped">Dropped</option>
-        <option value="favorites">Favorites</option>
-      </select>
-      
-      <label for="progress">Progress (episod curent/total):</label>
-      <input type="text" id="progress" name="progress" placeholder="ex: 5/10">
-      
-      <label for="rating">Rating (1-10):</label>
-      <input type="number" id="rating" name="rating" min="1" max="10">
-      
-      <label for="image-url">URL Imagine:</label>
-      <input type="url" id="image-url" name="image-url" placeholder="https://...">
-      
-      <label for="notes">Notițe:</label>
-      <textarea id="notes" name="notes" rows="3"></textarea>
-      
+      <div class="form-field">
+        <label for="category">Categorie</label>
+        <select id="category" name="category" required>
+          <option value="">Selectează categoria</option>
+          <option value="watching">Urmăresc</option>
+          <option value="planned">Planificat</option>
+          <option value="rewatching">Re-vizionare</option>
+          <option value="paused">Întrerupt</option>
+          <option value="dropped">Abandonat</option>
+          <option value="favorites">Favorite</option>
+        </select>
+      </div>
+
+      <div class="form-field" id="progress-field">
+        <label for="progress">Progres</label>
+        <input type="text" id="progress" name="progress" inputmode="numeric" placeholder="Ex.: 5/12" pattern="[0-9]+/[0-9]+" title="Format: număr curent / număr total (ex.: 5/12)">
+      </div>
+
+      <fieldset class="form-field form-field--rating">
+        <legend>Rating (1–10 stele)</legend>
+        <div class="rating-stars" role="radiogroup" aria-label="Rating de la 1 la 10">
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="1" required>
+            <span class="visually-hidden">1 stea</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="2">
+            <span class="visually-hidden">2 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="3">
+            <span class="visually-hidden">3 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="4">
+            <span class="visually-hidden">4 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="5">
+            <span class="visually-hidden">5 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="6">
+            <span class="visually-hidden">6 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="7">
+            <span class="visually-hidden">7 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="8">
+            <span class="visually-hidden">8 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="9">
+            <span class="visually-hidden">9 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+          <label class="rating-stars__item">
+            <input type="radio" name="rating" value="10">
+            <span class="visually-hidden">10 stele</span>
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="form-field">
+        <label for="image-url">URL imagine poster</label>
+        <input type="url" id="image-url" name="image-url" placeholder="https://…" maxlength="2048">
+      </div>
+
+      <div class="form-field">
+        <label for="notes">Notițe</label>
+        <textarea id="notes" name="notes" rows="4" maxlength="4000" placeholder="Note opționale…"></textarea>
+      </div>
+
       <div class="modal-actions">
-        <button type="submit">Salvează</button>
+        <button type="submit" id="form-submit-btn">Salvează</button>
         <button type="button" id="cancel-btn">Anulează</button>
       </div>
     </form>
   </dialog>
 
-  <footer>
-    <p>Realizat de Trofaila Alexandru &amp; Borcea Bogdan — Anul 2, Grupa: DAW-241</p>
+  <footer class="site-footer" role="contentinfo">
+    <p>Borcea Bogdan &amp; Trofaila Alexandru — DAW-241</p>
   </footer>
 
-  <script src="app.js"></script>
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-relevant="additions"></div>
+  <div id="search-overlay" class="search-overlay" role="region" aria-label="Rezultate căutare TMDB și watchlist" hidden></div>
 </body>
 </html>

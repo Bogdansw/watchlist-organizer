@@ -1,0 +1,15 @@
+body {
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+body.dark-mode {
+  --bg: #1E2028;
+  --surface: #252830;
+  --surface2: #2C3040;
+  --fg: #E8E6E0;
+  --muted: #9098A8;
+  --shadow-light: rgba(255, 255, 255, 0.04);
+  --shadow-dark: rgba(0, 0, 0, 0.5);
+  --accent: #8B84FF;
+  --accent-light: #A8A3FF;
+}

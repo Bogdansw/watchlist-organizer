@@ -110,19 +110,22 @@ a {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: var(--bg);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
   text-decoration: none;
-  box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.35), -6px -6px 12px rgba(255, 255, 255, 0.55);
-  transition: transform var(--transition), box-shadow var(--transition);
+  transition: transform var(--transition);
+  overflow: hidden;
+  color: var(--accent);
+}
+
+.site-logo svg {
+  width: 40px;
+  height: 40px;
 }
 
 .site-logo:hover {
   transform: translateY(-1px);
-  box-shadow: 12px 12px 20px rgba(163, 177, 198, 0.45), -12px -12px 20px rgba(255, 255, 255, 0.65);
 }
 
 .site-title {

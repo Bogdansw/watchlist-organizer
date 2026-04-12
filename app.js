@@ -13,6 +13,10 @@ const modalTitle = document.getElementById('modal-title');
 const submitBtn = document.getElementById('form-submit-btn');
 const searchBar = document.getElementById('search-bar');
 
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
+const TMDB_KEY = '0eeabdb8ab5281d5b50dded7185c5b7a';
+
 const CATEGORY_LABELS = {
   watching: 'Urmăresc',
   planned: 'Planificat',
@@ -38,6 +42,23 @@ const state = {
 
 let editingId = null;
 let searchDebounce = null;
+let tmdbDebounce = null;
+let selectedTmdb = null;
+
+const titleInput = form.querySelector('#title');
+const imageInput = form.querySelector('#image-url');
+const typeInput = form.querySelector('#type');
+const progressField = document.getElementById('progress-field');
+const titleField = titleInput.closest('.form-field');
+const imageField = imageInput.closest('.form-field');
+
+const tmdbField = document.createElement('div');
+tmdbField.className = 'form-field';
+tmdbField.id = 'tmdb-search-field';
+tmdbField.innerHTML = '<label for="tmdb-search-input">Caută în TMDB</label><input type="search" id="tmdb-search-input" autocomplete="off" placeholder="Scrie numele filmului sau serialului"><div id="tmdb-search-results" hidden style="display:grid;gap:8px;max-height:260px;overflow:auto;margin-top:8px;"></div>';
+form.insertBefore(tmdbField, titleField);
+const tmdbInput = tmdbField.querySelector('#tmdb-search-input');
+const tmdbResults = tmdbField.querySelector('#tmdb-search-results');
 
 function normalizeItems(rawItems) {
   if (!Array.isArray(rawItems)) return [];
@@ -75,6 +96,174 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function hasTmdbKey() {
+  return TMDB_KEY && TMDB_KEY.trim().length > 0;
+}
+
+function tmdbTypeToApi(type) {
+  if (type === 'movie') return 'movie';
+  if (type === 'series') return 'tv';
+  return 'multi';
+}
+
+function tmdbApiToType(mediaType) {
+  return mediaType === 'movie' ? 'movie' : 'series';
+}
+
+function formatTmdbResult(result, mediaType) {
+  const yearRaw = mediaType === 'movie' ? result.release_date : result.first_air_date;
+  return {
+    tmdbId: result.id,
+    title: result.title || result.name || '',
+    year: yearRaw ? String(yearRaw).slice(0, 4) : '',
+    posterPath: result.poster_path || '',
+    overview: result.overview || '',
+    type: tmdbApiToType(mediaType)
+  };
+}
+
+async function searchTMDB(query, type = 'multi') {
+  if (!hasTmdbKey()) {
+    throw new Error('TMDB_API_KEY_MISSING');
+  }
+
+  const cleaned = String(query || '').trim();
+  if (cleaned.length < 2) return [];
+
+  const apiType = tmdbTypeToApi(type);
+
+  if (apiType === 'multi') {
+    const [movieResponse, tvResponse] = await Promise.all([
+      fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(cleaned)}&include_adult=false&language=ro-RO`),
+      fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_KEY}&query=${encodeURIComponent(cleaned)}&include_adult=false&language=ro-RO`)
+    ]);
+
+    if (!movieResponse.ok || !tvResponse.ok) {
+      throw new Error('TMDB_SEARCH_FAILED');
+    }
+
+    const movieJson = await movieResponse.json();
+    const tvJson = await tvResponse.json();
+    const movies = Array.isArray(movieJson.results) ? movieJson.results.map(item => formatTmdbResult(item, 'movie')) : [];
+    const series = Array.isArray(tvJson.results) ? tvJson.results.map(item => formatTmdbResult(item, 'tv')) : [];
+    return [...movies, ...series].filter(item => item.title).slice(0, 8);
+  }
+
+  const response = await fetch(`${TMDB_BASE}/search/${apiType}?api_key=${TMDB_KEY}&query=${encodeURIComponent(cleaned)}&include_adult=false&language=ro-RO`);
+  if (!response.ok) {
+    throw new Error('TMDB_SEARCH_FAILED');
+  }
+  const data = await response.json();
+  const base = Array.isArray(data.results) ? data.results : [];
+  const mapped = base.map(item => formatTmdbResult(item, apiType));
+  return mapped.filter(item => item.title).slice(0, 8);
+}
+
+async function getTMDBDetails(id, type) {
+  if (!hasTmdbKey()) {
+    throw new Error('TMDB_API_KEY_MISSING');
+  }
+
+  const apiType = tmdbTypeToApi(type);
+  if (apiType === 'multi') {
+    throw new Error('TMDB_INVALID_DETAILS_TYPE');
+  }
+
+  const response = await fetch(`${TMDB_BASE}/${apiType}/${id}?api_key=${TMDB_KEY}&language=ro-RO&append_to_response=credits,videos`);
+  if (!response.ok) {
+    throw new Error('TMDB_DETAILS_FAILED');
+  }
+
+  const data = await response.json();
+  const cast = Array.isArray(data.credits?.cast) ? data.credits.cast.slice(0, 5).map(person => person.name) : [];
+  const trailer = Array.isArray(data.videos?.results)
+    ? data.videos.results.find(video => video.site === 'YouTube' && video.type === 'Trailer')?.key || null
+    : null;
+
+  return {
+    genres: Array.isArray(data.genres) ? data.genres.map(genre => genre.name) : [],
+    runtime: data.runtime || null,
+    episodes: data.number_of_episodes || null,
+    cast,
+    tmdbRating: data.vote_average || null,
+    trailerKey: trailer,
+    overview: data.overview || ''
+  };
+}
+
+function renderTmdbLoading() {
+  tmdbResults.innerHTML = `
+    <div style="display:grid;gap:8px;">
+      <div style="height:62px;border-radius:14px;background:linear-gradient(90deg,rgba(163,177,198,.15),rgba(163,177,198,.35),rgba(163,177,198,.15));background-size:200% 100%;animation:float 1.2s ease-in-out infinite;"></div>
+      <div style="height:62px;border-radius:14px;background:linear-gradient(90deg,rgba(163,177,198,.15),rgba(163,177,198,.35),rgba(163,177,198,.15));background-size:200% 100%;animation:float 1.2s ease-in-out infinite;"></div>
+      <div style="height:62px;border-radius:14px;background:linear-gradient(90deg,rgba(163,177,198,.15),rgba(163,177,198,.35),rgba(163,177,198,.15));background-size:200% 100%;animation:float 1.2s ease-in-out infinite;"></div>
+    </div>
+  `;
+  tmdbResults.hidden = false;
+}
+
+function hideTmdbResults() {
+  tmdbResults.hidden = true;
+  tmdbResults.innerHTML = '';
+}
+
+function renderTmdbResults(results) {
+  if (!results.length) {
+    tmdbResults.innerHTML = '<p style="margin:0;color:var(--muted);padding:8px;">Niciun rezultat TMDB.</p>';
+    tmdbResults.hidden = false;
+    return;
+  }
+
+  tmdbResults.innerHTML = results.map(result => {
+    const poster = result.posterPath
+      ? `${TMDB_IMG}${result.posterPath}`
+      : '';
+    const typeLabel = result.type === 'movie' ? 'FILM' : 'SERIAL';
+    return `
+      <button type="button" data-tmdb-id="${result.tmdbId}" data-tmdb-type="${result.type}" style="width:100%;border:0;background:var(--bg);border-radius:14px;padding:8px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:9px 9px 16px rgba(163,177,198,.35),-9px -9px 16px rgba(255,255,255,.45);margin-bottom:8px;text-align:left;">
+        ${poster ? `<img src="${poster}" alt="${escapeHtml(result.title)}" width="40" height="60" style="border-radius:8px;object-fit:cover;">` : `<div style="width:40px;height:60px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;box-shadow:inset 3px 3px 6px rgba(163,177,198,.45),inset -3px -3px 6px rgba(255,255,255,.55);color:var(--muted);font-size:10px;">N/A</div>`}
+        <span style="display:flex;flex-direction:column;gap:4px;">
+          <strong style="font-size:13px;line-height:1.2;color:var(--fg);">${escapeHtml(result.title)}</strong>
+          <span style="font-size:11px;color:var(--muted);">${escapeHtml(result.year || 'Fără an')} · ${typeLabel}</span>
+        </span>
+      </button>
+    `;
+  }).join('');
+
+  tmdbResults.hidden = false;
+  tmdbResults.querySelectorAll('button[data-tmdb-id]').forEach(button => {
+    button.addEventListener('click', () => {
+      const chosen = results.find(entry => String(entry.tmdbId) === button.dataset.tmdbId && entry.type === button.dataset.tmdbType);
+      if (!chosen) return;
+      populateFormFromTMDB(chosen);
+    });
+  });
+}
+
+async function populateFormFromTMDB(result) {
+  selectedTmdb = result;
+  form.title.value = result.title;
+  form.type.value = result.type;
+  form['image-url'].value = result.posterPath ? `${TMDB_IMG}${result.posterPath}` : '';
+  tmdbInput.value = `${result.title}${result.year ? ` (${result.year})` : ''}`;
+  titleField.style.display = 'flex';
+  imageField.style.display = 'flex';
+  progressField.style.display = form.type.value === 'movie' ? 'none' : 'flex';
+  hideTmdbResults();
+
+  try {
+    const details = await getTMDBDetails(result.tmdbId, result.type);
+    if (!form.notes.value.trim() && details.overview) {
+      form.notes.value = details.overview;
+    }
+    if (result.type === 'movie') {
+      form.progress.value = '';
+    }
+  } catch {
+    showToast('Nu s-au putut prelua detaliile TMDB');
+  }
 }
 
 function createStarRating(rating) {
@@ -311,13 +500,32 @@ function switchCategory(category) {
   renderGrid(category);
 }
 
+function setAddModeLayout() {
+  tmdbField.style.display = 'flex';
+  titleField.style.display = 'none';
+  imageField.style.display = 'none';
+  selectedTmdb = null;
+  tmdbInput.value = '';
+  form.title.value = '';
+  form['image-url'].value = '';
+  hideTmdbResults();
+}
+
+function setEditModeLayout() {
+  tmdbField.style.display = 'none';
+  titleField.style.display = 'flex';
+  imageField.style.display = 'flex';
+}
+
 function openModal(mode, itemId) {
   form.reset();
   editingId = null;
+  hideTmdbResults();
 
   if (mode === 'edit' && itemId) {
     const item = state.items.find(entry => entry.id === itemId);
     if (!item) return;
+    setEditModeLayout();
     editingId = item.id;
     modalTitle.textContent = 'Editează';
     submitBtn.textContent = 'Salvează modificările';
@@ -331,14 +539,20 @@ function openModal(mode, itemId) {
       const rating = form.querySelector(`input[name="rating"][value="${item.rating}"]`);
       if (rating) rating.checked = true;
     }
+    form.title.focus();
   } else {
+    setAddModeLayout();
     modalTitle.textContent = 'Adaugă film sau serial';
     submitBtn.textContent = 'Salvează';
     form.category.value = state.currentCategory;
+    tmdbInput.focus();
+    if (!hasTmdbKey()) {
+      showToast('Pentru TMDB este necesară cheia API');
+    }
   }
 
+  progressField.style.display = typeInput.value === 'movie' ? 'none' : 'flex';
   dialog.showModal();
-  form.title.focus();
 }
 
 function setupCategoryDnD() {
@@ -385,17 +599,76 @@ themeBtn.addEventListener('click', () => {
   localStorage.setItem('darkMode', String(!isDark));
 });
 
+typeInput.addEventListener('change', () => {
+  progressField.style.display = typeInput.value === 'movie' ? 'none' : 'flex';
+});
+
 addBtn.addEventListener('click', () => openModal('add'));
 
-cancelBtn.addEventListener('click', () => dialog.close());
+cancelBtn.addEventListener('click', () => {
+  hideTmdbResults();
+  dialog.close();
+});
 
 dialog.addEventListener('click', e => {
-  if (e.target === dialog) dialog.close();
+  if (e.target === dialog) {
+    hideTmdbResults();
+    dialog.close();
+  }
+});
+
+document.addEventListener('click', e => {
+  if (!dialog.open || tmdbResults.hidden) return;
+  if (tmdbField.contains(e.target)) return;
+  hideTmdbResults();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    hideTmdbResults();
+  }
+});
+
+tmdbInput.addEventListener('input', () => {
+  clearTimeout(tmdbDebounce);
+  const query = tmdbInput.value.trim();
+  selectedTmdb = null;
+  titleField.style.display = 'none';
+  imageField.style.display = 'none';
+  form.title.value = '';
+  form['image-url'].value = '';
+
+  if (query.length < 2) {
+    hideTmdbResults();
+    return;
+  }
+
+  tmdbDebounce = setTimeout(async () => {
+    try {
+      renderTmdbLoading();
+      const results = await searchTMDB(query, form.type.value || 'multi');
+      renderTmdbResults(results);
+    } catch (error) {
+      hideTmdbResults();
+      if (String(error.message) === 'TMDB_API_KEY_MISSING') {
+        showToast('Lipsește cheia TMDB API');
+      } else {
+        showToast('Nu s-a putut conecta la TMDB');
+      }
+    }
+  }, 350);
 });
 
 form.addEventListener('submit', e => {
   e.preventDefault();
   const ratingInput = form.querySelector('input[name="rating"]:checked');
+  const isAddMode = !editingId;
+
+  if (isAddMode && !selectedTmdb) {
+    showToast('Selectează mai întâi titlul din TMDB');
+    return;
+  }
+
   const payload = {
     title: form.title.value.trim(),
     type: form.type.value,
@@ -403,7 +676,8 @@ form.addEventListener('submit', e => {
     progress: form.progress.value.trim(),
     rating: ratingInput ? Number(ratingInput.value) : null,
     imageUrl: form['image-url'].value.trim(),
-    notes: form.notes.value.trim()
+    notes: form.notes.value.trim(),
+    tmdbId: selectedTmdb?.tmdbId || null
   };
 
   if (!payload.title || !payload.type || !payload.category) return;
@@ -414,6 +688,7 @@ form.addEventListener('submit', e => {
     addItem(payload);
   }
 
+  hideTmdbResults();
   dialog.close();
 });
 

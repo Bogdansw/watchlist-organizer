@@ -1,224 +1,221 @@
 const themeBtn = document.getElementById('theme-toggle-btn');
-const sunIcon  = document.querySelector('.theme-toggle__icon--sun');
+const sunIcon = document.querySelector('.theme-toggle__icon--sun');
 const moonIcon = document.querySelector('.theme-toggle__icon--moon');
+const categoryBtns = document.querySelectorAll('.category-btn');
+const currentCatEl = document.getElementById('current-category');
+const itemsCountEl = document.getElementById('items-count');
+const itemsGrid = document.getElementById('items-grid');
+const dialog = document.getElementById('item-dialog');
+const form = document.getElementById('item-form');
+const addBtn = document.getElementById('add-item-btn');
+const cancelBtn = document.getElementById('cancel-btn');
+const modalTitle = document.getElementById('modal-title');
+const submitBtn = document.getElementById('form-submit-btn');
+const searchBar = document.getElementById('search-bar');
+
+const CATEGORY_LABELS = {
+  watching: 'Urmăresc',
+  planned: 'Planificat',
+  rewatching: 'Re-vizionare',
+  paused: 'Întrerupt',
+  dropped: 'Abandonat',
+  favorites: 'Favorite'
+};
+
+const STAR_PATH = 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z';
+const ICON_EDIT = 'M3 17.25V21h3.75l11-11.03-3.75-3.75L3 17.25zm17.71-10.04a1.003 1.003 0 0 0 0-1.42l-2.5-2.5a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.97-1.66z';
+const ICON_DELETE = 'M6 7h12v2H6V7zm2 3h8l-1 11H9L8 10zm3-5h2l1 1h4v2H6V6h4l1-1z';
+const ICON_HEART = 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z';
+const ICON_MOVIE = 'M4 6h16v12H4V6zm3 2v2h2V8H7zm0 4v2h2v-2H7zm8-4v2h2V8h-2zm0 4v2h2v-2h-2zm-5-4v6h4V8h-4z';
+const ICON_SERIES = 'M21 3H3v14h7v4l4-4h7V3zM7 9h10v2H7V9zm0 4h7v2H7v-2z';
+
+const state = {
+  items: normalizeItems(JSON.parse(localStorage.getItem('items') || '[]')),
+  currentCategory: 'watching',
+  searchQuery: '',
+  theme: localStorage.getItem('darkMode') === 'true' ? 'dark' : 'light'
+};
+
+let editingId = null;
+let searchDebounce = null;
+
+function normalizeItems(rawItems) {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.map((item, index) => ({
+    id: item.id || `${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
+    title: String(item.title || '').trim(),
+    type: item.type === 'movie' ? 'movie' : 'series',
+    category: CATEGORY_LABELS[item.category] ? item.category : 'watching',
+    progress: String(item.progress || '').trim(),
+    rating: Number(item.rating) > 0 ? Math.min(10, Number(item.rating)) : null,
+    imageUrl: String(item.imageUrl || '').trim(),
+    notes: String(item.notes || '').trim(),
+    tmdbId: item.tmdbId || null,
+    addedAt: item.addedAt || new Date().toISOString(),
+    previousCategory: item.previousCategory || null
+  }));
+}
+
+function saveItems() {
+  localStorage.setItem('items', JSON.stringify(state.items));
+}
 
 function applyTheme(dark) {
   document.body.classList.toggle('dark-mode', dark);
   themeBtn.setAttribute('aria-pressed', String(dark));
-  if (dark) {
-    sunIcon.hidden  = true;
-    moonIcon.hidden = false;
-  } else {
-    sunIcon.hidden  = false;
-    moonIcon.hidden = true;
-  }
+  sunIcon.hidden = dark;
+  moonIcon.hidden = !dark;
+  state.theme = dark ? 'dark' : 'light';
 }
 
-const savedDark = localStorage.getItem('darkMode') === 'true';
-applyTheme(savedDark);
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
-themeBtn.addEventListener('click', () => {
-  const isDark = document.body.classList.contains('dark-mode');
-  applyTheme(!isDark);
-  localStorage.setItem('darkMode', String(!isDark));
-});
+function createStarRating(rating) {
+  const safeRating = Number(rating) || 0;
+  let html = '';
+  for (let i = 1; i <= 10; i += 1) {
+    const color = i <= safeRating ? 'var(--accent)' : 'var(--muted)';
+    html += `<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style="color:${color}"><path fill="currentColor" d="${STAR_PATH}"/></svg>`;
+  }
+  return `<div style="display:flex;align-items:center;gap:2px" title="${safeRating}/10">${html}</div>`;
+}
 
-const categoryBtns   = document.querySelectorAll('.category-btn');
-const currentCatEl   = document.getElementById('current-category');
-const itemsCountEl   = document.getElementById('items-count');
-const itemsGrid      = document.getElementById('items-grid');
+function placeholderPoster(type) {
+  const iconPath = type === 'movie' ? ICON_MOVIE : ICON_SERIES;
+  return `
+    <div style="width:100%;aspect-ratio:2/3;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--bg);box-shadow:inset 6px 6px 10px rgba(163,177,198,.45),inset -6px -6px 10px rgba(255,255,255,.55);color:var(--muted)">
+      <svg viewBox="0 0 24 24" width="44" height="44" aria-hidden="true"><path fill="currentColor" d="${iconPath}"/></svg>
+    </div>
+  `;
+}
 
-const CATEGORY_LABELS = {
-  watching:   'Urmăresc',
-  planned:    'Planificat',
-  rewatching: 'Re-vizionare',
-  paused:     'Întrerupt',
-  dropped:    'Abandonat',
-  favorites:  'Favorite',
-};
+function getProgressLabel(item) {
+  if (item.type === 'movie') return 'Complet';
+  return item.progress ? `Ep ${escapeHtml(item.progress)}` : 'Ep -';
+}
 
-let currentCategory = 'watching';
-let items = JSON.parse(localStorage.getItem('items') || '[]');
+function renderCard(item) {
+  const typeLabel = item.type === 'movie' ? 'FILM' : 'SERIAL';
+  const isFavorite = item.category === 'favorites';
+  const poster = item.imageUrl
+    ? `<img src="${escapeHtml(item.imageUrl)}" alt="Poster ${escapeHtml(item.title)}" loading="lazy" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:16px;">`
+    : placeholderPoster(item.type);
 
-function saveItems() {
-  localStorage.setItem('items', JSON.stringify(items));
+  return `
+    <article class="item-card" role="listitem" draggable="true" data-id="${item.id}" style="padding:14px;display:flex;flex-direction:column;gap:10px;position:relative;">
+      ${poster}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span style="font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:5px 8px;border-radius:9999px;background:var(--bg);box-shadow:inset 3px 3px 6px rgba(163,177,198,.45),inset -3px -3px 6px rgba(255,255,255,.55);">${typeLabel}</span>
+        ${createStarRating(item.rating)}
+      </div>
+      <strong style="font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px;">${escapeHtml(item.title)}</strong>
+      <span style="font-size:12px;color:var(--muted)">${getProgressLabel(item)}</span>
+      <div data-actions style="display:flex;gap:6px;margin-top:auto;opacity:0;transform:translateY(4px);transition:opacity 180ms ease-out,transform 180ms ease-out;pointer-events:none;">
+        <button type="button" data-action="edit" data-id="${item.id}" title="Editează" style="flex:1;min-height:32px;border:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:var(--accent);box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${ICON_EDIT}"/></svg>
+        </button>
+        <button type="button" data-action="favorite" data-id="${item.id}" title="Favorite" style="flex:1;min-height:32px;border:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:${isFavorite ? 'var(--accent)' : 'var(--muted)'};box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="transform:${isFavorite ? 'scale(1.3)' : 'scale(1)'};transition:transform 220ms ease-out,color 220ms ease-out;"><path fill="currentColor" d="${ICON_HEART}"/></svg>
+        </button>
+        <button type="button" data-action="delete" data-id="${item.id}" title="Șterge" style="flex:1;min-height:32px;border:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:#e57373;box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${ICON_DELETE}"/></svg>
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+function filterItems(query) {
+  state.searchQuery = String(query || '').trim().toLowerCase();
+  return state.searchQuery;
+}
+
+function getCategoryItems(category) {
+  return state.items.filter(item => item.category === category);
+}
+
+function getVisibleItems(category) {
+  const base = getCategoryItems(category);
+  if (!state.searchQuery) return base;
+  return base.filter(item => item.title.toLowerCase().includes(state.searchQuery));
 }
 
 function updateCounts() {
   categoryBtns.forEach(btn => {
-    const cat   = btn.dataset.category;
-    const count = items.filter(i => i.category === cat).length;
-    const el    = document.querySelector(`[data-count-for="${cat}"]`);
-    if (el) el.textContent = count;
+    const category = btn.dataset.category;
+    const count = getCategoryItems(category).length;
+    const countNode = document.querySelector(`[data-count-for="${category}"]`);
+    if (countNode) countNode.textContent = String(count);
   });
 }
 
-function renderGrid() {
-  const filtered = items.filter(i => i.category === currentCategory);
-  itemsCountEl.textContent = `${filtered.length} elemente`;
-  itemsGrid.innerHTML = '';
+function attachCardEvents() {
+  const cards = itemsGrid.querySelectorAll('[data-id]');
+  cards.forEach(card => {
+    const actions = card.querySelector('[data-actions]');
+    if (actions) {
+      card.addEventListener('mouseenter', () => {
+        actions.style.opacity = '1';
+        actions.style.transform = 'translateY(0)';
+        actions.style.pointerEvents = 'auto';
+      });
+      card.addEventListener('mouseleave', () => {
+        actions.style.opacity = '0';
+        actions.style.transform = 'translateY(4px)';
+        actions.style.pointerEvents = 'none';
+      });
+    }
 
-  if (filtered.length === 0) {
-    itemsGrid.innerHTML = `<p style="color:var(--muted);grid-column:1/-1">Niciun element în această categorie.</p>`;
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+      e.dataTransfer.effectAllowed = 'move';
+      card.style.opacity = '0.55';
+    });
+
+    card.addEventListener('dragend', () => {
+      card.style.opacity = '1';
+    });
+  });
+
+  itemsGrid.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const { action, id } = e.currentTarget.dataset;
+      if (action === 'edit') openModal('edit', id);
+      if (action === 'favorite') toggleFavorite(id);
+      if (action === 'delete') deleteItem(id);
+    });
+  });
+}
+
+function renderGrid(category = state.currentCategory) {
+  const visible = getVisibleItems(category);
+  itemsCountEl.textContent = `${visible.length} elemente`;
+
+  if (visible.length === 0) {
+    const message = state.searchQuery
+      ? `Niciun rezultat pentru "${escapeHtml(state.searchQuery)}".`
+      : 'Niciun element în această categorie.';
+    itemsGrid.innerHTML = `<p style="color:var(--muted);grid-column:1/-1">${message}</p>`;
     return;
   }
 
-  filtered.forEach((item, idx) => {
-    const globalIdx = items.indexOf(item);
-    const card = document.createElement('div');
-    card.className = 'item-card';
-    card.setAttribute('role', 'listitem');
-    card.style.cssText = 'padding:14px;display:flex;flex-direction:column;gap:8px;';
-
-    const stars = item.rating ? '★'.repeat(item.rating) + '☆'.repeat(10 - item.rating) : '';
-
-    card.innerHTML = `
-      ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:16px;">` : ''}
-      <strong style="font-size:14px;line-height:1.3">${item.title}</strong>
-      <span style="font-size:11px;color:var(--muted);text-transform:uppercase">${item.type === 'movie' ? 'Film' : 'Serial'}</span>
-      ${item.progress ? `<span style="font-size:12px;color:var(--muted)">Progres: ${item.progress}</span>` : ''}
-      ${stars ? `<span style="font-size:11px;color:var(--accent);letter-spacing:1px" title="${item.rating}/10">${stars}</span>` : ''}
-      <div style="display:flex;gap:6px;margin-top:4px">
-        <button onclick="editItem(${globalIdx})" style="flex:1;border:0;border-radius:9999px;padding:6px;cursor:pointer;background:var(--bg);color:var(--accent);box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);font-size:12px">Edit</button>
-        <button onclick="deleteItem(${globalIdx})" style="flex:1;border:0;border-radius:9999px;padding:6px;cursor:pointer;background:var(--bg);color:#e57373;box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);font-size:12px">Șterge</button>
-      </div>
-    `;
-    itemsGrid.appendChild(card);
-  });
+  itemsGrid.innerHTML = visible.map(renderCard).join('');
+  attachCardEvents();
 }
 
-function switchCategory(cat) {
-  currentCategory = cat;
-  currentCatEl.textContent = CATEGORY_LABELS[cat];
-  categoryBtns.forEach(b => b.classList.toggle('active', b.dataset.category === cat));
-  renderGrid();
-}
-
-categoryBtns.forEach(btn => {
-  btn.addEventListener('click', () => switchCategory(btn.dataset.category));
-});
-
-const dialog       = document.getElementById('item-dialog');
-const form         = document.getElementById('item-form');
-const addBtn       = document.getElementById('add-item-btn');
-const cancelBtn    = document.getElementById('cancel-btn');
-const modalTitle   = document.getElementById('modal-title');
-const submitBtn    = document.getElementById('form-submit-btn');
-
-let editingIndex = -1;
-
-function openModal(item = null, idx = -1) {
-  form.reset();
-  editingIndex = idx;
-
-  if (item) {
-    modalTitle.textContent = 'Editează';
-    submitBtn.textContent  = 'Salvează modificările';
-    form.title.value       = item.title;
-    form.type.value        = item.type;
-    form.category.value    = item.category;
-    form.progress.value    = item.progress || '';
-    form['image-url'].value = item.imageUrl || '';
-    form.notes.value       = item.notes || '';
-    if (item.rating) {
-      const radio = form.querySelector(`input[name="rating"][value="${item.rating}"]`);
-      if (radio) radio.checked = true;
-    }
-  } else {
-    modalTitle.textContent = 'Adaugă film sau serial';
-    submitBtn.textContent  = 'Salvează';
-    form.category.value    = currentCategory;
-  }
-
-  dialog.showModal();
-}
-
-addBtn.addEventListener('click', () => openModal());
-cancelBtn.addEventListener('click', () => dialog.close());
-dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
-
-window.editItem = function(idx) { openModal(items[idx], idx); };
-window.deleteItem = function(idx) {
-  items.splice(idx, 1);
-  saveItems();
-  updateCounts();
-  renderGrid();
-  showToast('Element șters.');
-};
-
-form.addEventListener('submit', e => {
-  e.preventDefault();
-  const ratingInput = form.querySelector('input[name="rating"]:checked');
-
-  const entry = {
-    title:    form.title.value.trim(),
-    type:     form.type.value,
-    category: form.category.value,
-    progress: form.progress.value.trim(),
-    rating:   ratingInput ? Number(ratingInput.value) : null,
-    imageUrl: form['image-url'].value.trim(),
-    notes:    form.notes.value.trim(),
-  };
-
-  if (editingIndex >= 0) {
-    items[editingIndex] = entry;
-    showToast('Modificări salvate!');
-  } else {
-    items.push(entry);
-    showToast('Element adăugat!');
-  }
-
-  saveItems();
-  updateCounts();
-  if (entry.category === currentCategory) renderGrid();
-  dialog.close();
-});
-
-const searchBar = document.getElementById('search-bar');
-searchBar.addEventListener('input', () => {
-  const q = searchBar.value.trim().toLowerCase();
-  if (!q) { renderGrid(); return; }
-
-  const filtered = items.filter(i =>
-    i.category === currentCategory && i.title.toLowerCase().includes(q)
-  );
-  itemsCountEl.textContent = `${filtered.length} elemente`;
-  itemsGrid.innerHTML = '';
-  filtered.forEach(item => {
-    const globalIdx = items.indexOf(item);
-    const card = document.createElement('div');
-    card.className = 'item-card';
-    card.setAttribute('role', 'listitem');
-    card.style.cssText = 'padding:14px;display:flex;flex-direction:column;gap:8px;';
-    const stars = item.rating ? '★'.repeat(item.rating) + '☆'.repeat(10 - item.rating) : '';
-    card.innerHTML = `
-      ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}" style="width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:16px;">` : ''}
-      <strong style="font-size:14px;line-height:1.3">${item.title}</strong>
-      <span style="font-size:11px;color:var(--muted);text-transform:uppercase">${item.type === 'movie' ? 'Film' : 'Serial'}</span>
-      ${item.progress ? `<span style="font-size:12px;color:var(--muted)">Progres: ${item.progress}</span>` : ''}
-      ${stars ? `<span style="font-size:11px;color:var(--accent);letter-spacing:1px">${stars}</span>` : ''}
-      <div style="display:flex;gap:6px;margin-top:4px">
-        <button onclick="editItem(${globalIdx})" style="flex:1;border:0;border-radius:9999px;padding:6px;cursor:pointer;background:var(--bg);color:var(--accent);box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);font-size:12px">Edit</button>
-        <button onclick="deleteItem(${globalIdx})" style="flex:1;border:0;border-radius:9999px;padding:6px;cursor:pointer;background:var(--bg);color:#e57373;box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);font-size:12px">Șterge</button>
-      </div>
-    `;
-    itemsGrid.appendChild(card);
-  });
-});
-
-function showToast(msg) {
+function showToast(message) {
   const container = document.getElementById('toast-container');
+  if (!container) return;
   const toast = document.createElement('div');
-  toast.textContent = msg;
-  toast.style.cssText = `
-    padding: 12px 18px;
-    border-radius: 9999px;
-    background: var(--accent);
-    color: #fff;
-    font-size: 14px;
-    box-shadow: 9px 9px 16px rgba(163,177,198,.45), -9px -9px 16px rgba(255,255,255,.65);
-    animation: toastIn .3s ease-out forwards;
-  `;
+  toast.textContent = message;
+  toast.style.cssText = 'padding:12px 18px;border-radius:9999px;background:var(--accent);color:#fff;font-size:14px;box-shadow:9px 9px 16px rgba(163,177,198,.45),-9px -9px 16px rgba(255,255,255,.65);animation:toastIn .3s ease-out forwards;';
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.animation = 'toastOut .3s ease-out forwards';
@@ -226,5 +223,213 @@ function showToast(msg) {
   }, 2500);
 }
 
+function addItem(data) {
+  const item = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: data.title,
+    type: data.type,
+    category: data.category,
+    progress: data.progress,
+    rating: data.rating,
+    imageUrl: data.imageUrl,
+    notes: data.notes,
+    tmdbId: data.tmdbId || null,
+    addedAt: new Date().toISOString(),
+    previousCategory: null
+  };
+  state.items.unshift(item);
+  saveItems();
+  updateCounts();
+  renderGrid();
+  const card = itemsGrid.querySelector(`[data-id="${item.id}"]`);
+  if (card) card.style.animation = 'slideUp .3s ease-out forwards, fadeIn .3s ease-out forwards';
+  showToast(`"${item.title}" adăugat`);
+}
+
+function editItem(id, data) {
+  const index = state.items.findIndex(item => item.id === id);
+  if (index < 0) return;
+  state.items[index] = {
+    ...state.items[index],
+    ...data
+  };
+  saveItems();
+  updateCounts();
+  renderGrid();
+  showToast('Modificări salvate');
+}
+
+function finalizeDelete(id) {
+  state.items = state.items.filter(item => item.id !== id);
+  saveItems();
+  updateCounts();
+  renderGrid();
+}
+
+function deleteItem(id) {
+  const card = itemsGrid.querySelector(`[data-id="${id}"]`);
+  const target = state.items.find(item => item.id === id);
+  if (!target) return;
+
+  if (card) {
+    card.style.animation = 'fadeOut .22s ease-out forwards, slideDown .22s ease-out forwards';
+    setTimeout(() => {
+      finalizeDelete(id);
+      showToast(`"${target.title}" șters`);
+    }, 230);
+    return;
+  }
+
+  finalizeDelete(id);
+  showToast(`"${target.title}" șters`);
+}
+
+function toggleFavorite(id) {
+  const index = state.items.findIndex(item => item.id === id);
+  if (index < 0) return;
+  const item = state.items[index];
+
+  if (item.category === 'favorites') {
+    item.category = item.previousCategory || 'watching';
+    item.previousCategory = null;
+  } else {
+    item.previousCategory = item.category;
+    item.category = 'favorites';
+  }
+
+  saveItems();
+  updateCounts();
+  renderGrid();
+}
+
+function switchCategory(category) {
+  state.currentCategory = category;
+  currentCatEl.textContent = CATEGORY_LABELS[category];
+  categoryBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.category === category);
+  });
+  renderGrid(category);
+}
+
+function openModal(mode, itemId) {
+  form.reset();
+  editingId = null;
+
+  if (mode === 'edit' && itemId) {
+    const item = state.items.find(entry => entry.id === itemId);
+    if (!item) return;
+    editingId = item.id;
+    modalTitle.textContent = 'Editează';
+    submitBtn.textContent = 'Salvează modificările';
+    form.title.value = item.title;
+    form.type.value = item.type;
+    form.category.value = item.category;
+    form.progress.value = item.progress || '';
+    form['image-url'].value = item.imageUrl || '';
+    form.notes.value = item.notes || '';
+    if (item.rating) {
+      const rating = form.querySelector(`input[name="rating"][value="${item.rating}"]`);
+      if (rating) rating.checked = true;
+    }
+  } else {
+    modalTitle.textContent = 'Adaugă film sau serial';
+    submitBtn.textContent = 'Salvează';
+    form.category.value = state.currentCategory;
+  }
+
+  dialog.showModal();
+  form.title.focus();
+}
+
+function setupCategoryDnD() {
+  categoryBtns.forEach(btn => {
+    btn.addEventListener('click', () => switchCategory(btn.dataset.category));
+
+    btn.addEventListener('dragover', e => {
+      e.preventDefault();
+      btn.classList.add('neu-raised-hover');
+    });
+
+    btn.addEventListener('dragleave', () => {
+      btn.classList.remove('neu-raised-hover');
+    });
+
+    btn.addEventListener('drop', e => {
+      e.preventDefault();
+      btn.classList.remove('neu-raised-hover');
+      const id = e.dataTransfer.getData('text/plain');
+      if (!id) return;
+      const item = state.items.find(entry => entry.id === id);
+      if (!item) return;
+
+      const nextCategory = btn.dataset.category;
+      if (nextCategory === 'favorites') {
+        if (item.category !== 'favorites') item.previousCategory = item.category;
+        item.category = 'favorites';
+      } else {
+        item.category = nextCategory;
+      }
+
+      saveItems();
+      updateCounts();
+      renderGrid();
+    });
+  });
+}
+
+applyTheme(localStorage.getItem('darkMode') === 'true');
+
+themeBtn.addEventListener('click', () => {
+  const isDark = document.body.classList.contains('dark-mode');
+  applyTheme(!isDark);
+  localStorage.setItem('darkMode', String(!isDark));
+});
+
+addBtn.addEventListener('click', () => openModal('add'));
+
+cancelBtn.addEventListener('click', () => dialog.close());
+
+dialog.addEventListener('click', e => {
+  if (e.target === dialog) dialog.close();
+});
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const ratingInput = form.querySelector('input[name="rating"]:checked');
+  const payload = {
+    title: form.title.value.trim(),
+    type: form.type.value,
+    category: form.category.value,
+    progress: form.progress.value.trim(),
+    rating: ratingInput ? Number(ratingInput.value) : null,
+    imageUrl: form['image-url'].value.trim(),
+    notes: form.notes.value.trim()
+  };
+
+  if (!payload.title || !payload.type || !payload.category) return;
+
+  if (editingId) {
+    editItem(editingId, payload);
+  } else {
+    addItem(payload);
+  }
+
+  dialog.close();
+});
+
+searchBar.addEventListener('input', e => {
+  clearTimeout(searchDebounce);
+  const query = e.target.value || '';
+  searchDebounce = setTimeout(() => {
+    filterItems(query);
+    renderGrid();
+  }, 300);
+});
+
+window.editItem = id => openModal('edit', id);
+window.deleteItem = deleteItem;
+window.toggleFavorite = toggleFavorite;
+
+setupCategoryDnD();
 updateCounts();
-renderGrid();
+switchCategory(state.currentCategory);

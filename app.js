@@ -63,13 +63,6 @@ const tmdbResults = tmdbField.querySelector('#tmdb-search-results');
 const ratingInputs = Array.from(form.querySelectorAll('input[name="rating"]'));
 const ratingItems = ratingInputs.map(input => input.closest('.rating-stars__item'));
 
-const previewField = document.createElement('div');
-previewField.className = 'form-field';
-previewField.id = 'poster-preview-field';
-previewField.innerHTML = '<label>Preview poster</label><div id="poster-preview" class="neu-inset" style="width:80px;height:120px;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);"></div>';
-form.insertBefore(previewField, imageField.nextSibling);
-const previewBox = previewField.querySelector('#poster-preview');
-
 let isClosingModal = false;
 
 function normalizeItems(rawItems) {
@@ -118,19 +111,6 @@ function isValidImageUrl(url) {
   } catch {
     return false;
   }
-}
-
-function renderPosterPreview(url) {
-  if (isValidImageUrl(url) && String(url).trim()) {
-    previewBox.innerHTML = `<img src="${escapeHtml(url)}" alt="Poster preview" width="80" height="120" style="width:80px;height:120px;object-fit:cover;border-radius:12px;">`;
-    return;
-  }
-
-  previewBox.innerHTML = `<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path fill="currentColor" d="${ICON_BROKEN}"/></svg>`;
-}
-
-function updatePosterPreview() {
-  renderPosterPreview(form['image-url'].value.trim());
 }
 
 function setRatingVisual(value) {
@@ -357,7 +337,6 @@ async function populateFormFromTMDB(result) {
   titleField.style.display = 'flex';
   imageField.style.display = 'flex';
   syncProgressField();
-  updatePosterPreview();
   hideTmdbResults();
 
   try {
@@ -616,7 +595,6 @@ function setAddModeLayout() {
   form.title.value = '';
   form['image-url'].value = '';
   clearRatingSelection();
-  updatePosterPreview();
   hideTmdbResults();
 }
 
@@ -717,10 +695,6 @@ typeInput.addEventListener('change', () => {
   syncProgressField();
 });
 
-imageInput.addEventListener('input', () => {
-  updatePosterPreview();
-});
-
 const ratingGrid = form.querySelector('.rating-stars');
 ratingItems.forEach((item, idx) => {
   const input = ratingInputs[idx];
@@ -778,7 +752,6 @@ tmdbInput.addEventListener('input', () => {
   imageField.style.display = 'none';
   form.title.value = '';
   form['image-url'].value = '';
-  updatePosterPreview();
 
   if (query.length < 2) {
     hideTmdbResults();
@@ -864,7 +837,6 @@ window.deleteItem = deleteItem;
 window.toggleFavorite = toggleFavorite;
 
 setRatingVisual(0);
-updatePosterPreview();
 syncProgressField();
 setupCategoryDnD();
 updateCounts();

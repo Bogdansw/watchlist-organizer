@@ -32,6 +32,7 @@ const ICON_DELETE = 'M6 7h12v2H6V7zm2 3h8l-1 11H9L8 10zm3-5h2l1 1h4v2H6V6h4l1-1z
 const ICON_HEART = 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z';
 const ICON_MOVIE = 'M4 6h16v12H4V6zm3 2v2h2V8H7zm0 4v2h2v-2H7zm8-4v2h2V8h-2zm0 4v2h2v-2h-2zm-5-4v6h4V8h-4z';
 const ICON_SERIES = 'M21 3H3v14h7v4l4-4h7V3zM7 9h10v2H7V9zm0 4h7v2H7v-2z';
+const ICON_BROKEN = 'M21 5v11.59l-3.29-3.3a.996.996 0 0 0-1.41 0L14 15.59l-3.29-3.3a.996.996 0 0 0-1.41 0L3 18.59V5h18m0-2H3c-1.1 0-2 .9-2 2v14c0 .89 1.08 1.34 1.71.71L10 12.41l2.29 2.3c.39.39 1.02.39 1.41 0L17 11.41l5.29 5.3c.63.63 1.71.18 1.71-.71V5c0-1.1-.9-2-2-2z';
 
 const state = {
   items: normalizeItems(JSON.parse(localStorage.getItem('items') || '[]')),
@@ -59,6 +60,17 @@ tmdbField.innerHTML = '<label for="tmdb-search-input">Caută în TMDB</label><in
 form.insertBefore(tmdbField, titleField);
 const tmdbInput = tmdbField.querySelector('#tmdb-search-input');
 const tmdbResults = tmdbField.querySelector('#tmdb-search-results');
+const ratingInputs = Array.from(form.querySelectorAll('input[name="rating"]'));
+const ratingItems = ratingInputs.map(input => input.closest('.rating-stars__item'));
+
+const previewField = document.createElement('div');
+previewField.className = 'form-field';
+previewField.id = 'poster-preview-field';
+previewField.innerHTML = '<label>Preview poster</label><div id="poster-preview" class="neu-inset" style="width:80px;height:120px;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);"></div>';
+form.insertBefore(previewField, imageField.nextSibling);
+const previewBox = previewField.querySelector('#poster-preview');
+
+let isClosingModal = false;
 
 function normalizeItems(rawItems) {
   if (!Array.isArray(rawItems)) return [];
@@ -98,6 +110,79 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+function isValidImageUrl(url) {
+  if (!url) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function renderPosterPreview(url) {
+  if (isValidImageUrl(url) && String(url).trim()) {
+    previewBox.innerHTML = `<img src="${escapeHtml(url)}" alt="Poster preview" width="80" height="120" style="width:80px;height:120px;object-fit:cover;border-radius:12px;">`;
+    return;
+  }
+
+  previewBox.innerHTML = `<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path fill="currentColor" d="${ICON_BROKEN}"/></svg>`;
+}
+
+function updatePosterPreview() {
+  renderPosterPreview(form['image-url'].value.trim());
+}
+
+function setRatingVisual(value) {
+  const n = Number(value) || 0;
+  ratingItems.forEach((item, idx) => {
+    const icon = item.querySelector('svg');
+    if (!icon) return;
+    icon.style.color = idx + 1 <= n ? 'var(--accent)' : 'var(--muted)';
+    icon.style.transform = idx + 1 <= n ? 'scale(1.08)' : 'scale(1)';
+    icon.style.transition = 'transform 160ms ease-out, color 160ms ease-out';
+  });
+}
+
+function getSelectedRating() {
+  const checked = form.querySelector('input[name="rating"]:checked');
+  return checked ? Number(checked.value) : null;
+}
+
+function clearRatingSelection() {
+  ratingInputs.forEach(input => {
+    input.checked = false;
+  });
+  setRatingVisual(0);
+}
+
+function syncProgressField() {
+  const isMovie = form.type.value === 'movie';
+  progressField.style.display = isMovie ? 'none' : 'flex';
+  form.progress.placeholder = isMovie ? '' : 'Ep. curent / Total ep.';
+  if (isMovie) {
+    form.progress.value = '';
+    form.progress.setCustomValidity('');
+  }
+}
+
+function openModalWithAnimation() {
+  dialog.style.animation = 'slideUp .24s ease-out, fadeIn .24s ease-out';
+  dialog.showModal();
+}
+
+function closeModalAnimated() {
+  if (isClosingModal || !dialog.open) return;
+  isClosingModal = true;
+  hideTmdbResults();
+  dialog.style.animation = 'slideDown .22s ease-out, fadeOut .22s ease-out';
+  setTimeout(() => {
+    dialog.close();
+    dialog.style.animation = '';
+    isClosingModal = false;
+  }, 220);
+}
+
 function hasTmdbKey() {
   return TMDB_KEY && TMDB_KEY.trim().length > 0;
 }
@@ -112,6 +197,13 @@ function tmdbApiToType(mediaType) {
   return mediaType === 'movie' ? 'movie' : 'series';
 }
 
+function normalizeTmdbQuery(query) {
+  return String(query || '')
+    .trim()
+    .replace(/[.,!?;:]+$/g, '')
+    .replace(/\s+/g, ' ');
+}
+
 function formatTmdbResult(result, mediaType) {
   const yearRaw = mediaType === 'movie' ? result.release_date : result.first_air_date;
   return {
@@ -124,41 +216,55 @@ function formatTmdbResult(result, mediaType) {
   };
 }
 
+async function fetchTmdbSearch(apiType, query, language = 'en-US') {
+  const response = await fetch(`${TMDB_BASE}/search/${apiType}?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&include_adult=false&language=${language}`);
+  if (!response.ok) {
+    throw new Error('TMDB_SEARCH_FAILED');
+  }
+
+  const data = await response.json();
+  const results = Array.isArray(data.results) ? data.results : [];
+  return results;
+}
+
+function uniqueQueries(query) {
+  const base = normalizeTmdbQuery(query);
+  const trimmed = String(query || '').trim();
+  const variants = [trimmed, base, base.replace(/\s*\.$/, ''), base.replace(/["“”'’]/g, '')]
+    .map(value => value.trim())
+    .filter(value => value.length >= 2);
+  return [...new Set(variants)];
+}
+
 async function searchTMDB(query, type = 'multi') {
   if (!hasTmdbKey()) {
     throw new Error('TMDB_API_KEY_MISSING');
   }
 
-  const cleaned = String(query || '').trim();
-  if (cleaned.length < 2) return [];
+  const variants = uniqueQueries(query);
+  if (variants.length === 0) return [];
 
   const apiType = tmdbTypeToApi(type);
 
-  if (apiType === 'multi') {
-    const [movieResponse, tvResponse] = await Promise.all([
-      fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(cleaned)}&include_adult=false&language=ro-RO`),
-      fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_KEY}&query=${encodeURIComponent(cleaned)}&include_adult=false&language=ro-RO`)
-    ]);
+  for (const variant of variants) {
+    if (apiType === 'multi') {
+      const [movieResults, tvResults] = await Promise.all([
+        fetchTmdbSearch('movie', variant, 'en-US'),
+        fetchTmdbSearch('tv', variant, 'en-US')
+      ]);
 
-    if (!movieResponse.ok || !tvResponse.ok) {
-      throw new Error('TMDB_SEARCH_FAILED');
+      const mappedMovies = movieResults.map(item => formatTmdbResult(item, 'movie'));
+      const mappedSeries = tvResults.map(item => formatTmdbResult(item, 'tv'));
+      const combined = [...mappedMovies, ...mappedSeries].filter(item => item.title).slice(0, 12);
+      if (combined.length > 0) return combined;
+    } else {
+      const results = await fetchTmdbSearch(apiType, variant, 'en-US');
+      const mapped = results.map(item => formatTmdbResult(item, apiType)).filter(item => item.title).slice(0, 12);
+      if (mapped.length > 0) return mapped;
     }
-
-    const movieJson = await movieResponse.json();
-    const tvJson = await tvResponse.json();
-    const movies = Array.isArray(movieJson.results) ? movieJson.results.map(item => formatTmdbResult(item, 'movie')) : [];
-    const series = Array.isArray(tvJson.results) ? tvJson.results.map(item => formatTmdbResult(item, 'tv')) : [];
-    return [...movies, ...series].filter(item => item.title).slice(0, 8);
   }
 
-  const response = await fetch(`${TMDB_BASE}/search/${apiType}?api_key=${TMDB_KEY}&query=${encodeURIComponent(cleaned)}&include_adult=false&language=ro-RO`);
-  if (!response.ok) {
-    throw new Error('TMDB_SEARCH_FAILED');
-  }
-  const data = await response.json();
-  const base = Array.isArray(data.results) ? data.results : [];
-  const mapped = base.map(item => formatTmdbResult(item, apiType));
-  return mapped.filter(item => item.title).slice(0, 8);
+  return [];
 }
 
 async function getTMDBDetails(id, type) {
@@ -250,7 +356,8 @@ async function populateFormFromTMDB(result) {
   tmdbInput.value = `${result.title}${result.year ? ` (${result.year})` : ''}`;
   titleField.style.display = 'flex';
   imageField.style.display = 'flex';
-  progressField.style.display = form.type.value === 'movie' ? 'none' : 'flex';
+  syncProgressField();
+  updatePosterPreview();
   hideTmdbResults();
 
   try {
@@ -508,6 +615,8 @@ function setAddModeLayout() {
   tmdbInput.value = '';
   form.title.value = '';
   form['image-url'].value = '';
+  clearRatingSelection();
+  updatePosterPreview();
   hideTmdbResults();
 }
 
@@ -515,6 +624,7 @@ function setEditModeLayout() {
   tmdbField.style.display = 'none';
   titleField.style.display = 'flex';
   imageField.style.display = 'flex';
+  hideTmdbResults();
 }
 
 function openModal(mode, itemId) {
@@ -535,10 +645,14 @@ function openModal(mode, itemId) {
     form.progress.value = item.progress || '';
     form['image-url'].value = item.imageUrl || '';
     form.notes.value = item.notes || '';
+    selectedTmdb = item.tmdbId ? { tmdbId: item.tmdbId, type: item.type } : null;
     if (item.rating) {
       const rating = form.querySelector(`input[name="rating"][value="${item.rating}"]`);
       if (rating) rating.checked = true;
     }
+    setRatingVisual(item.rating || 0);
+    syncProgressField();
+    updatePosterPreview();
     form.title.focus();
   } else {
     setAddModeLayout();
@@ -551,8 +665,8 @@ function openModal(mode, itemId) {
     }
   }
 
-  progressField.style.display = typeInput.value === 'movie' ? 'none' : 'flex';
-  dialog.showModal();
+  syncProgressField();
+  openModalWithAnimation();
 }
 
 function setupCategoryDnD() {
@@ -600,20 +714,42 @@ themeBtn.addEventListener('click', () => {
 });
 
 typeInput.addEventListener('change', () => {
-  progressField.style.display = typeInput.value === 'movie' ? 'none' : 'flex';
+  syncProgressField();
+});
+
+imageInput.addEventListener('input', () => {
+  updatePosterPreview();
+});
+
+const ratingGrid = form.querySelector('.rating-stars');
+ratingItems.forEach((item, idx) => {
+  const input = ratingInputs[idx];
+  const value = Number(input.value);
+  item.addEventListener('mouseenter', () => {
+    setRatingVisual(value);
+  });
+  input.addEventListener('change', () => {
+    setRatingVisual(value);
+  });
+});
+ratingGrid.addEventListener('mouseleave', () => {
+  setRatingVisual(getSelectedRating() || 0);
 });
 
 addBtn.addEventListener('click', () => openModal('add'));
 
 cancelBtn.addEventListener('click', () => {
-  hideTmdbResults();
-  dialog.close();
+  closeModalAnimated();
+});
+
+dialog.addEventListener('cancel', e => {
+  e.preventDefault();
+  closeModalAnimated();
 });
 
 dialog.addEventListener('click', e => {
   if (e.target === dialog) {
-    hideTmdbResults();
-    dialog.close();
+    closeModalAnimated();
   }
 });
 
@@ -625,6 +761,11 @@ document.addEventListener('click', e => {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (dialog.open) {
+      e.preventDefault();
+      closeModalAnimated();
+      return;
+    }
     hideTmdbResults();
   }
 });
@@ -637,6 +778,7 @@ tmdbInput.addEventListener('input', () => {
   imageField.style.display = 'none';
   form.title.value = '';
   form['image-url'].value = '';
+  updatePosterPreview();
 
   if (query.length < 2) {
     hideTmdbResults();
@@ -661,11 +803,27 @@ tmdbInput.addEventListener('input', () => {
 
 form.addEventListener('submit', e => {
   e.preventDefault();
-  const ratingInput = form.querySelector('input[name="rating"]:checked');
   const isAddMode = !editingId;
+  const ratingValue = getSelectedRating();
 
   if (isAddMode && !selectedTmdb) {
     showToast('Selectează mai întâi titlul din TMDB');
+    return;
+  }
+
+  if (!ratingValue) {
+    showToast('Selectează un rating între 1 și 10');
+    return;
+  }
+
+  const imageUrl = form['image-url'].value.trim();
+  if (imageUrl && !isValidImageUrl(imageUrl)) {
+    showToast('URL-ul imaginii nu este valid');
+    return;
+  }
+
+  if (form.type.value === 'series' && form.progress.value.trim() && !/^\d+\/\d+$/.test(form.progress.value.trim())) {
+    showToast('Progres invalid. Folosește formatul X/Y');
     return;
   }
 
@@ -673,11 +831,11 @@ form.addEventListener('submit', e => {
     title: form.title.value.trim(),
     type: form.type.value,
     category: form.category.value,
-    progress: form.progress.value.trim(),
-    rating: ratingInput ? Number(ratingInput.value) : null,
-    imageUrl: form['image-url'].value.trim(),
+    progress: form.type.value === 'movie' ? '' : form.progress.value.trim(),
+    rating: ratingValue,
+    imageUrl,
     notes: form.notes.value.trim(),
-    tmdbId: selectedTmdb?.tmdbId || null
+    tmdbId: editingId ? (state.items.find(item => item.id === editingId)?.tmdbId || selectedTmdb?.tmdbId || null) : (selectedTmdb?.tmdbId || null)
   };
 
   if (!payload.title || !payload.type || !payload.category) return;
@@ -689,7 +847,7 @@ form.addEventListener('submit', e => {
   }
 
   hideTmdbResults();
-  dialog.close();
+  closeModalAnimated();
 });
 
 searchBar.addEventListener('input', e => {
@@ -705,6 +863,9 @@ window.editItem = id => openModal('edit', id);
 window.deleteItem = deleteItem;
 window.toggleFavorite = toggleFavorite;
 
+setRatingVisual(0);
+updatePosterPreview();
+syncProgressField();
 setupCategoryDnD();
 updateCounts();
 switchCategory(state.currentCategory);

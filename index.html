@@ -40,9 +40,7 @@
           </svg>
         </span>
         <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true" hidden>
-          <svg viewBox="0 0 24 24" width="22" height="22" focusable="false">
-            <path fill="currentColor" d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-1.56.89-3.36 1.39-5.29 1.39-5.79 0-10.5-4.71-10.5-10.5 0-1.93.5-3.73 1.39-5.29z"/>
-          </svg>
+            <img src="images/moon.png" alt="Dark mode" width="22" height="22" style="display:block;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.10));">
         </span>
       </button>
     </nav>
@@ -89,6 +87,15 @@
           </button>
         </li>
         <li>
+          <button type="button" class="category-btn" data-category="finished">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M9 16.17l-3.88-3.88L3.7 13.7 9 19l12-12-1.41-1.41z"/>
+            </svg>
+            <span class="category-btn__label">Finisat</span>
+            <span class="category-btn__count" data-count-for="finished">0</span>
+          </button>
+        </li>
+        <li>
           <button type="button" class="category-btn" data-category="dropped">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
               <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
@@ -107,6 +114,7 @@
           </button>
         </li>
       </ul>
+
     </aside>
 
     <main class="main" id="content-area">
@@ -144,6 +152,7 @@
           <option value="planned">Planificat</option>
           <option value="rewatching">Re-vizionare</option>
           <option value="paused">Întrerupt</option>
+          <option value="finished">Finisat</option>
           <option value="dropped">Abandonat</option>
           <option value="favorites">Favorite</option>
         </select>

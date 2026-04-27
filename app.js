@@ -12,6 +12,9 @@ const cancelBtn = document.getElementById('cancel-btn');
 const modalTitle = document.getElementById('modal-title');
 const submitBtn = document.getElementById('form-submit-btn');
 const searchBar = document.getElementById('search-bar');
+const searchOverlay = document.getElementById('search-overlay');
+const searchField = searchBar.closest('.search-field');
+const recommendationsGrid = document.getElementById('recommendations-grid');
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
@@ -22,6 +25,7 @@ const CATEGORY_LABELS = {
   planned: 'Planificat',
   rewatching: 'Re-vizionare',
   paused: 'Întrerupt',
+  finished: 'Finisat',
   dropped: 'Abandonat',
   favorites: 'Favorite'
 };
@@ -101,6 +105,19 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightSearchMatch(value, query) {
+  const text = String(value || '');
+  const normalizedQuery = String(query || '').trim();
+  if (!normalizedQuery) return escapeHtml(text);
+
+  const regex = new RegExp(`(${escapeRegExp(normalizedQuery)})`, 'ig');
+  return escapeHtml(text).replace(regex, '<mark>$1</mark>');
 }
 
 function isValidImageUrl(url) {
@@ -279,6 +296,66 @@ async function getTMDBDetails(id, type) {
   };
 }
 
+async function getTMDBTrending() {
+  if (!hasTmdbKey()) {
+    throw new Error('TMDB_API_KEY_MISSING');
+  }
+
+  const response = await fetch(`${TMDB_BASE}/trending/all/week?api_key=${TMDB_KEY}&language=ro-RO`);
+  if (!response.ok) {
+    throw new Error('TMDB_TRENDING_FAILED');
+  }
+
+  const data = await response.json();
+  const results = Array.isArray(data.results) ? data.results : [];
+  return results
+    .filter(item => item.media_type === 'movie' || item.media_type === 'tv')
+    .slice(0, 6)
+    .map(item => ({
+      tmdbId: item.id,
+      title: item.title || item.name || 'Titlu fara nume',
+      posterPath: item.poster_path || '',
+      type: item.media_type === 'movie' ? 'movie' : 'series',
+      rating: typeof item.vote_average === 'number' ? item.vote_average : null
+    }));
+}
+
+function renderRecommendations(items) {
+  if (!recommendationsGrid) return;
+
+  if (!items.length) {
+    recommendationsGrid.innerHTML = '<p style="margin:0;color:var(--muted);">Nu exista recomandari momentan.</p>';
+    return;
+  }
+
+  recommendationsGrid.innerHTML = items.map(item => {
+    const poster = item.posterPath
+      ? `<img class="rec-thumb" src="${TMDB_IMG}${item.posterPath}" alt="Poster ${escapeHtml(item.title)}" loading="lazy">`
+      : `<div class="rec-thumb rec-thumb--placeholder"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="${item.type === 'movie' ? ICON_MOVIE : ICON_SERIES}"/></svg></div>`;
+    const typeLabel = item.type === 'movie' ? 'FILM' : 'SERIAL';
+    const rating = item.rating ? item.rating.toFixed(1) : 'N/A';
+
+    return `
+      <article class="rec-card">
+        ${poster}
+        <div class="rec-title">${escapeHtml(item.title)}</div>
+        <div class="rec-meta">
+          <span class="rec-type">${typeLabel}</span>
+          <span class="rec-rating">
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="${STAR_PATH}"/></svg>
+            ${rating}
+          </span>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+async function loadRecommendations() {
+  if (!recommendationsGrid) return;
+  recommendationsGrid.innerHTML = '<p style="margin:0;color:var(--muted);">Recomandarile vor fi generate dupa activitatea ta.</p>';
+}
+
 function renderTmdbLoading() {
   tmdbResults.innerHTML = `
     <div style="display:grid;gap:8px;">
@@ -420,6 +497,78 @@ function getVisibleItems(category) {
   const base = getCategoryItems(category);
   if (!state.searchQuery) return base;
   return base.filter(item => item.title.toLowerCase().includes(state.searchQuery));
+}
+
+function getGlobalSearchResults(query) {
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  if (normalizedQuery.length < 3) return [];
+
+  return state.items
+    .filter(item => item.title.toLowerCase().includes(normalizedQuery))
+    .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
+    .slice(0, 12);
+}
+
+function hideSearchOverlay() {
+  if (!searchOverlay) return;
+  searchOverlay.hidden = true;
+  searchOverlay.innerHTML = '';
+}
+
+function renderSearchOverlay(query) {
+  if (!searchOverlay) return;
+
+  const normalizedQuery = String(query || '').trim();
+  const results = getGlobalSearchResults(normalizedQuery);
+
+  if (normalizedQuery.length < 3) {
+    hideSearchOverlay();
+    return;
+  }
+
+  if (!results.length) {
+    searchOverlay.innerHTML = `
+      <p class="search-overlay__header">Cautare globala in watchlist</p>
+      <div class="search-overlay__results">
+        <p style="margin:0;color:var(--muted);padding:8px;">Nu exista rezultate pentru "${escapeHtml(normalizedQuery)}".</p>
+      </div>
+    `;
+    searchOverlay.hidden = false;
+    return;
+  }
+
+  searchOverlay.innerHTML = `
+    <p class="search-overlay__header">Cautare globala in watchlist</p>
+    <div class="search-overlay__results">
+      ${results.map(item => {
+        const typeLabel = item.type === 'movie' ? 'FILM' : 'SERIAL';
+        const categoryLabel = CATEGORY_LABELS[item.category] || CATEGORY_LABELS.watching;
+        const iconPath = item.type === 'movie' ? ICON_MOVIE : ICON_SERIES;
+        const poster = item.imageUrl
+          ? `<img class="search-overlay__thumb" src="${escapeHtml(item.imageUrl)}" alt="Poster ${escapeHtml(item.title)}" loading="lazy">`
+          : `<span class="search-overlay__thumb search-overlay__thumb--placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="${iconPath}"/></svg></span>`;
+
+        return `
+          <button type="button" class="search-overlay__item" data-search-result-id="${item.id}">
+            ${poster}
+            <span>
+              <strong class="search-overlay__title">${highlightSearchMatch(item.title, normalizedQuery)}</strong>
+              <span class="search-overlay__meta">${typeLabel} | ${escapeHtml(categoryLabel)}</span>
+            </span>
+          </button>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  searchOverlay.hidden = false;
+}
+
+function clearSearchView() {
+  searchBar.value = '';
+  filterItems('');
+  hideSearchOverlay();
+  renderGrid();
 }
 
 function updateCounts() {
@@ -733,6 +882,37 @@ document.addEventListener('click', e => {
   hideTmdbResults();
 });
 
+searchOverlay.addEventListener('click', e => {
+  const button = e.target.closest('button[data-search-result-id]');
+  if (!button) return;
+
+  const item = state.items.find(entry => entry.id === button.dataset.searchResultId);
+  if (!item) return;
+
+  clearTimeout(searchDebounce);
+  filterItems('');
+  hideSearchOverlay();
+  searchBar.value = '';
+  switchCategory(item.category);
+
+  requestAnimationFrame(() => {
+    const targetCard = itemsGrid.querySelector(`[data-id="${item.id}"]`);
+    if (!targetCard) return;
+    targetCard.classList.add('item-card--search-hit');
+    targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+      targetCard.classList.remove('item-card--search-hit');
+    }, 900);
+  });
+});
+
+document.addEventListener('click', e => {
+  if (searchOverlay.hidden) return;
+  if (searchOverlay.contains(e.target)) return;
+  if (searchField && searchField.contains(e.target)) return;
+  hideSearchOverlay();
+});
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (dialog.open) {
@@ -740,7 +920,26 @@ document.addEventListener('keydown', e => {
       closeModalAnimated();
       return;
     }
+    if (!searchOverlay.hidden || searchBar.value.trim()) {
+      e.preventDefault();
+      clearSearchView();
+      searchBar.blur();
+      return;
+    }
     hideTmdbResults();
+  }
+
+  if (e.key === '/' && !dialog.open) {
+    const active = document.activeElement;
+    const isTypingContext = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    );
+    if (isTypingContext) return;
+    e.preventDefault();
+    searchBar.focus();
+    searchBar.select();
   }
 });
 
@@ -829,6 +1028,7 @@ searchBar.addEventListener('input', e => {
   searchDebounce = setTimeout(() => {
     filterItems(query);
     renderGrid();
+    renderSearchOverlay(query);
   }, 300);
 });
 
@@ -841,3 +1041,4 @@ syncProgressField();
 setupCategoryDnD();
 updateCounts();
 switchCategory(state.currentCategory);
+loadRecommendations();

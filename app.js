@@ -14,6 +14,7 @@ const submitBtn = document.getElementById('form-submit-btn');
 const searchBar = document.getElementById('search-bar');
 const searchOverlay = document.getElementById('search-overlay');
 const searchField = searchBar.closest('.search-field');
+const recommendationsGrid = document.getElementById('recommendations-grid');
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
@@ -293,6 +294,66 @@ async function getTMDBDetails(id, type) {
     trailerKey: trailer,
     overview: data.overview || ''
   };
+}
+
+async function getTMDBTrending() {
+  if (!hasTmdbKey()) {
+    throw new Error('TMDB_API_KEY_MISSING');
+  }
+
+  const response = await fetch(`${TMDB_BASE}/trending/all/week?api_key=${TMDB_KEY}&language=ro-RO`);
+  if (!response.ok) {
+    throw new Error('TMDB_TRENDING_FAILED');
+  }
+
+  const data = await response.json();
+  const results = Array.isArray(data.results) ? data.results : [];
+  return results
+    .filter(item => item.media_type === 'movie' || item.media_type === 'tv')
+    .slice(0, 6)
+    .map(item => ({
+      tmdbId: item.id,
+      title: item.title || item.name || 'Titlu fara nume',
+      posterPath: item.poster_path || '',
+      type: item.media_type === 'movie' ? 'movie' : 'series',
+      rating: typeof item.vote_average === 'number' ? item.vote_average : null
+    }));
+}
+
+function renderRecommendations(items) {
+  if (!recommendationsGrid) return;
+
+  if (!items.length) {
+    recommendationsGrid.innerHTML = '<p style="margin:0;color:var(--muted);">Nu exista recomandari momentan.</p>';
+    return;
+  }
+
+  recommendationsGrid.innerHTML = items.map(item => {
+    const poster = item.posterPath
+      ? `<img class="rec-thumb" src="${TMDB_IMG}${item.posterPath}" alt="Poster ${escapeHtml(item.title)}" loading="lazy">`
+      : `<div class="rec-thumb rec-thumb--placeholder"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="${item.type === 'movie' ? ICON_MOVIE : ICON_SERIES}"/></svg></div>`;
+    const typeLabel = item.type === 'movie' ? 'FILM' : 'SERIAL';
+    const rating = item.rating ? item.rating.toFixed(1) : 'N/A';
+
+    return `
+      <article class="rec-card">
+        ${poster}
+        <div class="rec-title">${escapeHtml(item.title)}</div>
+        <div class="rec-meta">
+          <span class="rec-type">${typeLabel}</span>
+          <span class="rec-rating">
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="${STAR_PATH}"/></svg>
+            ${rating}
+          </span>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+async function loadRecommendations() {
+  if (!recommendationsGrid) return;
+  recommendationsGrid.innerHTML = '<p style="margin:0;color:var(--muted);">Recomandarile vor fi generate dupa activitatea ta.</p>';
 }
 
 function renderTmdbLoading() {
@@ -980,3 +1041,4 @@ syncProgressField();
 setupCategoryDnD();
 updateCounts();
 switchCategory(state.currentCategory);
+loadRecommendations();

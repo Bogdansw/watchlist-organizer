@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ro">
-<head>
+  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Movie Playlist Tracker</title>
@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dark.css">
+  <script src="lists.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -115,6 +116,16 @@
         </li>
       </ul>
 
+      <div class="sidebar__section sidebar__section--lists" aria-label="Listele mele">
+        <p class="sidebar__section-title">LISTELE MELE</p>
+        <button type="button" class="list-create-btn" id="create-list-btn">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+          <span>Creează lista nouă</span>
+        </button>
+      </div>
+
     </aside>
 
     <main class="main" id="content-area">
@@ -123,6 +134,28 @@
         <span class="main__badge" id="items-count" aria-live="polite">0 elemente</span>
       </header>
       <div id="items-grid" class="items-grid" role="list" aria-label="Lista de filme și seriale"></div>
+
+      <section class="dashboard-bottom" aria-label="Dashboard secundar">
+        <div class="dashboard-block" id="recommendations-section">
+          <div class="dashboard-block__header">
+            <h3>Recomandări pentru tine</h3>
+            <button type="button" class="pill-btn">Vezi toate</button>
+          </div>
+          <div class="dashboard-block__body recommendations-grid" id="recommendations-grid"></div>
+        </div>
+
+        <div class="dashboard-block dashboard-block--cta" id="create-list-cta">
+          <div class="dashboard-block__body"></div>
+        </div>
+
+        <div class="dashboard-block" id="user-lists-section">
+          <div class="dashboard-block__header">
+            <h3>Listele tale</h3>
+            <button type="button" class="pill-btn">Vezi toate</button>
+          </div>
+          <div class="dashboard-block__body" id="user-lists"></div>
+        </div>
+      </section>
     </main>
   </div>
 

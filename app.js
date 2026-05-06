@@ -385,9 +385,9 @@ function renderTmdbResults(results) {
       : '';
     const typeLabel = result.type === 'movie' ? 'FILM' : 'SERIAL';
     return `
-      <button type="button" data-tmdb-id="${result.tmdbId}" data-tmdb-type="${result.type}" style="width:100%;border:0;background:var(--bg);border-radius:14px;padding:8px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:9px 9px 16px rgba(163,177,198,.35),-9px -9px 16px rgba(255,255,255,.45);margin-bottom:8px;text-align:left;">
-        ${poster ? `<img src="${poster}" alt="${escapeHtml(result.title)}" width="40" height="60" style="border-radius:8px;object-fit:cover;">` : `<div style="width:40px;height:60px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;box-shadow:inset 3px 3px 6px rgba(163,177,198,.45),inset -3px -3px 6px rgba(255,255,255,.55);color:var(--muted);font-size:10px;">N/A</div>`}
-        <span style="display:flex;flex-direction:column;gap:4px;">
+      <button type="button" class="tmdb-result" data-tmdb-id="${result.tmdbId}" data-tmdb-type="${result.type}">
+        ${poster ? `<img src="${poster}" alt="${escapeHtml(result.title)}" width="40" height="60" class="tmdb-result__poster">` : `<div class="tmdb-result__poster tmdb-result__poster--placeholder">N/A</div>`}
+        <span class="tmdb-result__meta">
           <strong style="font-size:13px;line-height:1.2;color:var(--fg);">${escapeHtml(result.title)}</strong>
           <span style="font-size:11px;color:var(--muted);">${escapeHtml(result.year || 'Fără an')} · ${typeLabel}</span>
         </span>
@@ -442,7 +442,7 @@ function createStarRating(rating) {
 function placeholderPoster(type) {
   const iconPath = type === 'movie' ? ICON_MOVIE : ICON_SERIES;
   return `
-    <div style="width:100%;aspect-ratio:2/3;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--bg);box-shadow:inset 6px 6px 10px rgba(163,177,198,.45),inset -6px -6px 10px rgba(255,255,255,.55);color:var(--muted)">
+    <div class="item-card__poster-placeholder">
       <svg viewBox="0 0 24 24" width="44" height="44" aria-hidden="true"><path fill="currentColor" d="${iconPath}"/></svg>
     </div>
   `;
@@ -464,19 +464,19 @@ function renderCard(item) {
     <article class="item-card" role="listitem" draggable="true" data-id="${item.id}" style="padding:14px;display:flex;flex-direction:column;gap:10px;position:relative;">
       ${poster}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <span style="font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:5px 8px;border-radius:9999px;background:var(--bg);box-shadow:inset 3px 3px 6px rgba(163,177,198,.45),inset -3px -3px 6px rgba(255,255,255,.55);">${typeLabel}</span>
+        <span class="item-card__type">${typeLabel}</span>
         ${createStarRating(item.rating)}
       </div>
       <strong style="font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px;">${escapeHtml(item.title)}</strong>
       <span style="font-size:12px;color:var(--muted)">${getProgressLabel(item)}</span>
       <div data-actions style="display:flex;gap:6px;margin-top:auto;opacity:0;transform:translateY(4px);transition:opacity 180ms ease-out,transform 180ms ease-out;pointer-events:none;">
-        <button type="button" data-action="edit" data-id="${item.id}" title="Editează" style="flex:1;min-height:32px;border:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:var(--accent);box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);">
+        <button type="button" class="card-action-btn card-action-btn--edit" data-action="edit" data-id="${item.id}" title="Editează">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${ICON_EDIT}"/></svg>
         </button>
-        <button type="button" data-action="favorite" data-id="${item.id}" title="Favorite" style="flex:1;min-height:32px;border:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:${isFavorite ? 'var(--accent)' : 'var(--muted)'};box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);">
+        <button type="button" class="card-action-btn card-action-btn--favorite" data-action="favorite" data-id="${item.id}" title="Favorite" style="color:${isFavorite ? 'var(--accent)' : 'var(--muted)'};">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="transform:${isFavorite ? 'scale(1.3)' : 'scale(1)'};transition:transform 220ms ease-out,color 220ms ease-out;"><path fill="currentColor" d="${ICON_HEART}"/></svg>
         </button>
-        <button type="button" data-action="delete" data-id="${item.id}" title="Șterge" style="flex:1;min-height:32px;border:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg);color:#e57373;box-shadow:inset 3px 3px 6px rgba(163,177,198,.55),inset -3px -3px 6px rgba(255,255,255,.65);">
+        <button type="button" class="card-action-btn card-action-btn--delete" data-action="delete" data-id="${item.id}" title="Șterge">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${ICON_DELETE}"/></svg>
         </button>
       </div>
